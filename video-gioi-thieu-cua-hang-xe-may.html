@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Siêu Thị Xe Máy - Video giới thiệu 3D</title>
+<style>
+:root{--bg:#eef0f6;--fg:#12183a;--panel:#fff;--accent:#ffc83d;--line:#c9cfe4;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1230;--fg:#eef0ff;--panel:#1a2150;--line:#33407f}}
+:root[data-theme="dark"]{--bg:#0d1230;--fg:#eef0ff;--panel:#1a2150;--line:#33407f}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;display:flex;flex-direction:column;gap:10px;padding:12px}
+#stage{position:relative;flex:1;min-height:300px;border-radius:14px;overflow:hidden;background:#2447c9}
+#stage canvas{display:block;width:100%;height:100%}
+#ov{position:absolute;left:0;right:0;bottom:0;padding:70px 22px 22px;color:#fff;pointer-events:none;background:linear-gradient(transparent,rgba(10,22,80,.88))}
+#ov>*{margin:0;animation:up .8s both}
+#ov h1,#ov h2{font-size:clamp(30px,6.2vw,60px);line-height:1.04;font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
+#ov p{font-size:clamp(15px,2.3vw,21px);max-width:34em;line-height:1.45;color:#e4e9ff;animation-delay:.25s}
+#ov ul{list-style:none;padding:0;display:grid;gap:8px;font-size:clamp(15px,2.3vw,21px)}
+#ov li{padding-left:12px;border-left:3px solid #ffc83d;animation:up .8s both}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+#bar{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+#bar button{width:40px;height:40px;border:0;border-radius:50%;background:var(--accent);color:#12183a;font-size:16px;cursor:pointer}
+#bar button:focus-visible,#bar input:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+#bar input{flex:1;accent-color:#2447c9}
+#bar span{font-variant-numeric:tabular-nums;font-size:14px;min-width:84px;text-align:right}
+@media (prefers-reduced-motion:reduce){#ov>*,#ov li{animation:none}}
+</style>
+</head>
+<body>
+<div id="stage"><div id="ov"></div></div>
+<div id="bar">
+  <button id="pp" aria-label="Tạm dừng">❚❚</button>
+  <input id="seek" type="range" min="0" max="28" step="0.05" value="0" aria-label="Tua video">
+  <span id="tm">0:00 / 0:28</span>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const T=THREE, DUR=28;
+const stage=document.getElementById('stage'), ov=document.getElementById('ov');
+const renderer=new T.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+stage.prepend(renderer.domElement);
+const scene=new T.Scene();
+scene.background=new T.Color(0x2447c9);
+scene.fog=new T.Fog(0x2447c9,11,26);
+const cam=new T.PerspectiveCamera(45,1,.1,60);
+scene.add(new T.HemisphereLight(0xffffff,0x1a2f8a,.9));
+const key=new T.DirectionalLight(0xffffff,.9);key.position.set(4,8,5);scene.add(key);
+const rim=new T.PointLight(0xffe2a0,1,16);rim.position.set(-5,3,-4);scene.add(rim);
+
+const floor=new T.Mesh(new T.CylinderGeometry(9,9,.1,72),new T.MeshStandardMaterial({color:0x162b8f,metalness:.4,roughness:.4}));
+floor.position.y=-.05;scene.add(floor);
+const ring=new T.Mesh(new T.TorusGeometry(8.5,.05,8,120),new T.MeshBasicMaterial({color:0xffc83d}));
+ring.rotation.x=Math.PI/2;ring.position.y=.02;scene.add(ring);
+
+const mat=(c,m,r,e)=>new T.MeshStandardMaterial({color:c,metalness:m,roughness:r,emissive:e||0,emissiveIntensity:e?1.4:0});
+const wheels=[], bikes=[];
+function bike(color){
+  const g=new T.Group(), paint=mat(color,.5,.3), blk=mat(0x15171f,.2,.8), chr=mat(0xd5d9e0,.9,.2);
+  const add=(geo,m,x,y,z,rx,ry,rz,s)=>{const o=new T.Mesh(geo,m);o.position.set(x,y,z);o.rotation.set(rx||0,ry||0,rz||0);if(s)o.scale.set(s[0],s[1],s[2]);g.add(o);return o};
+  [-.95,.95].forEach(x=>{
+    const w=new T.Group();w.position.set(x,.42,0);
+    w.add(new T.Mesh(new T.TorusGeometry(.32,.1,16,32),blk));
+    const hub=new T.Mesh(new T.CylinderGeometry(.18,.18,.14,24),chr);hub.rotation.x=Math.PI/2;w.add(hub);
+    const s1=new T.Mesh(new T.BoxGeometry(.56,.03,.03),chr),s2=s1.clone();s2.rotation.z=Math.PI/2;w.add(s1,s2);
+    g.add(w);wheels.push(w);
+  });
+  add(new T.SphereGeometry(1,24,16),paint,-.2,.85,0,0,0,0,[.85,.28,.27]);
+  add(new T.BoxGeometry(.12,.7,.34),paint,.75,.95,0,0,0,-.25);
+  add(new T.BoxGeometry(.8,.07,.4),blk,.25,.45,0);
+  add(new T.BoxGeometry(.8,.12,.38),blk,-.35,1.08,0);
+  add(new T.BoxGeometry(.35,.2,.34),paint,-.95,.95,0,0,0,.2);
+  add(new T.BoxGeometry(.4,.3,.3),mat(0x3a3d48,.6,.5),-.2,.5,0);
+  add(new T.CylinderGeometry(.04,.04,.85,12),chr,.865,.83,0,0,0,.2);
+  add(new T.CylinderGeometry(.025,.025,.8,12),blk,.75,1.27,0,Math.PI/2);
+  add(new T.SphereGeometry(.1,16,12),mat(0xffffff,0,.2,0xfff1b0),.84,1.12,0);
+  add(new T.BoxGeometry(.05,.06,.05),blk,.7,1.45,.38);
+  add(new T.BoxGeometry(.05,.06,.05),blk,.7,1.45,-.38);
+  add(new T.SphereGeometry(1,16,10),paint,.95,.78,0,0,0,0,[.35,.08,.18]);
+  add(new T.SphereGeometry(1,16,10),paint,-.95,.75,0,0,0,0,[.4,.08,.2]);
+  add(new T.CylinderGeometry(.05,.06,.7,12),chr,-.7,.4,.28,0,0,Math.PI/2);
+  add(new T.BoxGeometry(.04,.05,.18),mat(0xff2a2a,0,.4,0xff2a2a),-1.14,.98,0);
+  return g;
+}
+[[0xffc83d,-3],[0xf5f5ef,0],[0xff5a45,3]].forEach(([c,x],i)=>{const b=bike(c);b.position.x=x;scene.add(b);bikes.push(b)});
+
+const K=[[0,[-3.5,1.4,4.5],[0,.8,0]],[6,[3.5,1.2,4.2],[0,.8,0]],[9,[0,2,9],[0,.8,0]],[13,[6.5,1.5,4.5],[3,.8,0]],
+[20,[1.5,1.3,4],[3,.8,0]],[23,[0,3.2,11],[0,.8,0]],[28,[0,2.4,9.5],[0,.8,0]]];
+const ss=x=>x*x*(3-2*x), lerp=(a,b,u)=>a+(b-a)*u;
+const look=new T.Vector3();
+function camAt(t,k){
+  let i=0;while(i<K.length-2&&t>K[i+1][0])i++;
+  const a=K[i],b=K[i+1],u=ss(Math.min(1,Math.max(0,(t-a[0])/(b[0]-a[0]))));
+  const L=a[2].map((v,j)=>lerp(v,b[2][j],u)), P=a[1].map((v,j)=>lerp(v,b[1][j],u));
+  look.set(L[0],L[1],L[2]);
+  cam.position.set(L[0]+(P[0]-L[0])*k,P[1],L[2]+(P[2]-L[2])*k);
+  cam.lookAt(look);
+}
+const S=[
+ [0,'<h1>Siêu Thị Xe Máy</h1><p>Xe chính hãng, giá tốt, trả góp dễ dàng. Chạm tay vào đam mê tốc độ.</p>'],
+ [6,'<h2>Đủ dòng xe, đủ màu sắc</h2><p>Xe số, xe tay ga, xe côn tay: chọn chiếc hợp với bạn.</p>'],
+ [13,'<h2>Mua xe an tâm</h2><ul><li style="animation-delay:.3s">Bảo hành chính hãng 3 năm</li><li style="animation-delay:.9s">Trả góp lãi suất 0%, duyệt hồ sơ trong 30 phút</li><li style="animation-delay:1.5s">Bảo dưỡng và sửa chữa trọn đời</li></ul>'],
+ [20,'<h2>Ghé siêu thị lái thử</h2><p>123 Đường Số 1, TP. Hồ Chí Minh<br>Hotline 0900 000 000, mở cửa 8:00 đến 20:00 mỗi ngày</p>']
+];
+let t=0,playing=true,last=performance.now(),sc=-1;
+const pp=document.getElementById('pp'),seek=document.getElementById('seek'),tm=document.getElementById('tm');
+const fmt=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+pp.onclick=()=>{playing=!playing;pp.textContent=playing?'❚❚':'▶';pp.setAttribute('aria-label',playing?'Tạm dừng':'Phát')};
+seek.oninput=()=>{t=+seek.value;sc=-1};
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;renderer.setSize(w,h);cam.aspect=w/h;cam.updateProjectionMatrix()}
+new ResizeObserver(resize).observe(stage);resize();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  if(playing){t+=dt;if(t>=DUR){t=0;sc=-1}}
+  let n=0;S.forEach((s,i)=>{if(t>=s[0])n=i});
+  if(n!==sc){sc=n;ov.innerHTML=S[n][1]}
+  bikes.forEach((b,i)=>b.rotation.y=t*.35+i*1.2);
+  if(playing)wheels.forEach(w=>w.rotation.z-=dt*3);
+  ring.scale.setScalar(1+Math.sin(t*2)*.008);
+  camAt(t,cam.aspect<1?1.6:1);
+  seek.value=t;tm.textContent=fmt(t)+' / '+fmt(DUR);
+  renderer.render(scene,cam);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
